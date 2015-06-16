@@ -531,7 +531,7 @@ static char DZNWebViewControllerKVOContext = 0;
     controller.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(dismissHistoryController)];
     
     UINavigationController *navigationController = [[UINavigationController alloc] initWithRootViewController:controller];
-    UIView *bar = DZN_IS_IPAD ? self.navigationBar : self.toolbar;
+    UIView *bar = DZN_IS_IPAD ? self.navigationController.navigationBar : self.navigationController.toolbar;
     
     if (DZN_IS_IPAD) {
         UIPopoverController *popover = [[UIPopoverController alloc] initWithContentViewController:navigationController];
@@ -570,6 +570,8 @@ static char DZNWebViewControllerKVOContext = 0;
 - (void)configureBarItemsGestures
 {
     UIView *backwardButton= [self.backwardBarItem valueForKey:@"view"];
+    [backwardButton removeGestureRecognizer:self.backwardLongPress];
+
     if (backwardButton.gestureRecognizers.count == 0) {
         if (!_backwardLongPress) {
             _backwardLongPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(showBackwardHistory:)];
@@ -578,6 +580,8 @@ static char DZNWebViewControllerKVOContext = 0;
     }
     
     UIView *forwardBarButton= [self.forwardBarItem valueForKey:@"view"];
+    [forwardBarButton removeGestureRecognizer:self.forwardLongPress];
+
     if (forwardBarButton.gestureRecognizers.count == 0) {
         if (!_forwardLongPress) {
             _forwardLongPress = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(showForwardHistory:)];
@@ -856,6 +860,18 @@ static char DZNWebViewControllerKVOContext = 0;
     return NO;
 }
 
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
+{
+    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext> context)
+     {
+     } completion:^(id<UIViewControllerTransitionCoordinatorContext> context)
+     {
+         [self.navigationController setToolbarItems:self.navigationToolItems];
+         [self configureBarItemsGestures];
+     }];
+
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+}
 
 #pragma mark - View lifeterm
 

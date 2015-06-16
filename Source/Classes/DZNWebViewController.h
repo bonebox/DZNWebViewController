@@ -97,6 +97,7 @@ typedef NS_OPTIONS(NSUInteger, DZNsupportedWebActions) {
 
 - (NSArray *)navigationToolItems;
 - (void)removeObservers;
+- (void)configureBarItemsGestures;
 
 ///------------------------------------------------
 /// @name Appearance customisation
