@@ -58,6 +58,7 @@ typedef NS_OPTIONS(NSUInteger, DZNsupportedWebActions) {
 @property (nonatomic) BOOL allowHistory;
 /** YES if both, the navigation and tool bars should hide when panning vertically. Default is YES. */
 @property (nonatomic) BOOL hideBarsWithGestures;
+@property (nonatomic) BOOL observersActive;
 
 ///------------------------------------------------
 /// @name Initialization
@@ -93,6 +94,9 @@ typedef NS_OPTIONS(NSUInteger, DZNsupportedWebActions) {
  @param baseURL A URL that is used to resolve relative URLs within the document.
  */
 - (void)loadURL:(NSURL *)URL baseURL:(NSURL *)baseURL;
+
+- (NSArray *)navigationToolItems;
+- (void)removeObservers;
 
 ///------------------------------------------------
 /// @name Appearance customisation

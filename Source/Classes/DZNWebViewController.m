@@ -96,10 +96,7 @@ static char DZNWebViewControllerKVOContext = 0;
     [super viewWillAppear:animated];
     
     [UIView performWithoutAnimation:^{
-        static dispatch_once_t willAppearConfig;
-        dispatch_once(&willAppearConfig, ^{
             [self configureToolBars];
-        });
     }];
     
     if (!self.webView.URL) {
@@ -110,11 +107,8 @@ static char DZNWebViewControllerKVOContext = 0;
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    
-    static dispatch_once_t didAppearConfig;
-    dispatch_once(&didAppearConfig, ^{
-        [self configureBarItemsGestures];
-    });
+
+    [self configureBarItemsGestures];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -127,10 +121,50 @@ static char DZNWebViewControllerKVOContext = 0;
 - (void)viewDidDisappear:(BOOL)animated
 {
 	[super viewDidDisappear:animated];
-    
+
     [self.webView stopLoading];
+
+    [self removeObservers];
 }
 
+- (void)removeObservers
+{
+    if (self.hideBarsWithGestures && self.observersActive) {
+        self.observersActive = NO;
+        [self.navigationController.navigationBar removeObserver:self forKeyPath:@"hidden" context:&DZNWebViewControllerKVOContext];
+        [self.navigationController.navigationBar removeObserver:self forKeyPath:@"center" context:&DZNWebViewControllerKVOContext];
+        [self.navigationController.navigationBar removeObserver:self forKeyPath:@"alpha" context:&DZNWebViewControllerKVOContext];
+    }
+}
+
+- (void)addObservers
+{
+    if (self.hideBarsWithGestures && !self.observersActive) {
+        self.observersActive = YES;
+        [self.navigationController.navigationBar addObserver:self forKeyPath:@"hidden" options:NSKeyValueObservingOptionNew context:&DZNWebViewControllerKVOContext];
+        [self.navigationController.navigationBar addObserver:self forKeyPath:@"center" options:NSKeyValueObservingOptionNew context:&DZNWebViewControllerKVOContext];
+        [self.navigationController.navigationBar addObserver:self forKeyPath:@"alpha" options:NSKeyValueObservingOptionNew context:&DZNWebViewControllerKVOContext];
+    }
+}
+
+- (void)dealloc
+{
+    _backwardBarItem = nil;
+    _forwardBarItem = nil;
+    _stateBarItem = nil;
+    _actionBarItem = nil;
+    _progressView = nil;
+
+    _backwardLongPress = nil;
+    _forwardLongPress = nil;
+
+    _webView.scrollView.delegate = nil;
+    _webView.navDelegate = nil;
+    _webView.UIDelegate = nil;
+    _webView.scrollView.delegate = nil;
+    _webView = nil;
+    _URL = nil;
+}
 
 #pragma mark - Getter methods
 
@@ -155,13 +189,14 @@ static char DZNWebViewControllerKVOContext = 0;
     if (!_progressView)
     {
         CGFloat lineHeight = 2.0f;
-        CGRect frame = CGRectMake(0, CGRectGetHeight(self.navigationBar.bounds) - lineHeight, CGRectGetWidth(self.navigationBar.bounds), lineHeight);
+
+        CGRect frame = CGRectMake(0, CGRectGetHeight(self.navigationController.navigationBar.bounds) - lineHeight, CGRectGetWidth(self.navigationController.navigationBar.bounds), lineHeight);
         
         UIProgressView *progressView = [[UIProgressView alloc] initWithFrame:frame];
         progressView.trackTintColor = [UIColor clearColor];
         progressView.alpha = 0.0f;
         
-        [self.navigationBar addSubview:progressView];
+        [self.navigationController.navigationBar addSubview:progressView];
         
         _progressView = progressView;
     }
@@ -236,7 +271,7 @@ static char DZNWebViewControllerKVOContext = 0;
         if (!DZN_IS_IPAD) [items addObject:flexibleSpace];
         [items addObject:self.actionBarItem];
     }
-    
+
     return items;
 }
 
@@ -459,8 +494,8 @@ static char DZNWebViewControllerKVOContext = 0;
 
 - (void)dismissHistoryController
 {
-    if (self.presentedViewController) {
-        [self.presentedViewController dismissViewControllerAnimated:YES completion:^{
+    if (self.navigationController.presentedViewController) {
+        [self.navigationController.presentedViewController dismissViewControllerAnimated:YES completion:^{
             
             // The bar button item's gestures are invalidated after using them, so we must re-assign them.
             [self configureBarItemsGestures];
@@ -503,17 +538,17 @@ static char DZNWebViewControllerKVOContext = 0;
         [popover presentPopoverFromRect:view.frame inView:bar permittedArrowDirections:UIPopoverArrowDirectionAny animated:YES];
     }
     else {
-        [self presentViewController:navigationController animated:YES completion:NULL];
+        [self.navigationController presentViewController:navigationController animated:YES completion:NULL];
     }
 }
 
 - (void)configureToolBars
 {
     if (DZN_IS_IPAD) {
-        self.navigationItem.rightBarButtonItems = [[[self navigationToolItems] reverseObjectEnumerator] allObjects];
+        self.navigationController.navigationItem.rightBarButtonItems = [[[self navigationToolItems] reverseObjectEnumerator] allObjects];
     }
     else {
-        [self setToolbarItems:[self navigationToolItems]];
+        [self.navigationController setToolbarItems:[self navigationToolItems]];
     }
     
     self.toolbar = self.navigationController.toolbar;
@@ -524,13 +559,9 @@ static char DZNWebViewControllerKVOContext = 0;
     self.navigationController.hidesBarsWhenKeyboardAppears = self.hideBarsWithGestures;
     self.navigationController.hidesBarsWhenVerticallyCompact = self.hideBarsWithGestures;
 
-    if (self.hideBarsWithGestures) {
-        [self.navigationBar addObserver:self forKeyPath:@"hidden" options:NSKeyValueObservingOptionNew context:&DZNWebViewControllerKVOContext];
-        [self.navigationBar addObserver:self forKeyPath:@"center" options:NSKeyValueObservingOptionNew context:&DZNWebViewControllerKVOContext];
-        [self.navigationBar addObserver:self forKeyPath:@"alpha" options:NSKeyValueObservingOptionNew context:&DZNWebViewControllerKVOContext];
-    }
-
-    if (!DZN_IS_IPAD && self.navigationController.toolbarHidden && self.toolbarItems.count > 0) {
+    [self addObservers];
+    
+    if (!DZN_IS_IPAD && self.navigationController.toolbarHidden && self.navigationController.toolbarItems.count > 0) {
         [self.navigationController setToolbarHidden:NO];
     }
 }
@@ -836,29 +867,6 @@ static char DZNWebViewControllerKVOContext = 0;
 - (void)viewDidUnload
 {
     [super viewDidUnload];
-}
-
-- (void)dealloc
-{
-    [self.navigationBar removeObserver:self forKeyPath:@"hidden" context:&DZNWebViewControllerKVOContext];
-    [self.navigationBar removeObserver:self forKeyPath:@"center" context:&DZNWebViewControllerKVOContext];
-    [self.navigationBar removeObserver:self forKeyPath:@"alpha" context:&DZNWebViewControllerKVOContext];
-    
-    _backwardBarItem = nil;
-    _forwardBarItem = nil;
-    _stateBarItem = nil;
-    _actionBarItem = nil;
-    _progressView = nil;
-    
-    _backwardLongPress = nil;
-    _forwardLongPress = nil;
-    
-    _webView.scrollView.delegate = nil;
-    _webView.navDelegate = nil;
-    _webView.UIDelegate = nil;
-    _webView.scrollView.delegate = nil;
-    _webView = nil;
-    _URL = nil;
 }
 
 @end
