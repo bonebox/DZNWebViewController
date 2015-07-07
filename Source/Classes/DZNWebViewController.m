@@ -240,7 +240,12 @@ static char DZNWebViewControllerKVOContext = 0;
 {
     if (!_actionBarItem)
     {
-        _actionBarItem = [[UIBarButtonItem alloc] initWithImage:[self actionButtonImage] landscapeImagePhone:nil style:0 target:self action:@selector(presentActivityController:)];
+        if (self.actionButtonImage) {
+            _actionBarItem = [[UIBarButtonItem alloc] initWithImage:[self actionButtonImage] landscapeImagePhone:nil style:0 target:self action:@selector(presentActivityController:)];
+        }
+        else {
+            _actionBarItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAction target:self action:@selector(presentActivityController:)];
+        }
         _actionBarItem.accessibilityLabel = NSLocalizedStringFromTable(@"Share", @"DZNWebViewController", @"Accessibility label button title");
         _actionBarItem.enabled = NO;
     }
@@ -312,6 +317,7 @@ static char DZNWebViewControllerKVOContext = 0;
     return _stopButtonImage;
 }
 
+/*
 - (UIImage *)actionButtonImage
 {
     if (!_actionButtonImage) {
@@ -319,6 +325,7 @@ static char DZNWebViewControllerKVOContext = 0;
     }
     return _actionButtonImage;
 }
+*/
 
 - (NSArray *)applicationActivitiesForItem:(id)item
 {
